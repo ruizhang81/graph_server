@@ -1,0 +1,34 @@
+#!/bin/sh
+
+rebuild="false"
+while getopts 'r' OPT; do
+    case $OPT in
+        r) rebuild="true";;
+    esac
+done
+
+#配置环境
+if [ "$(uname)" == "Darwin" ]; then
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib/pkgconfig/
+fi
+
+cd graph_server
+
+#如果指定重新build
+if [ "$rebuild" == "true" ]; then
+    make clean
+    make
+fi
+
+#如果没有myservicez文件
+if [ ! -f "myservice" ];then
+    make
+fi
+
+#杀死进程
+kill -9 `lsof -t -i:8000`
+kill -9 `ps -ef | grep myservice | grep -v grep | awk '{print $2}'`
+#重启
+
+./myservice
+#valgrind --tool=memcheck --leak-check=full --show-reachable=yes --trace-children=yes ./myservice

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$(uname)" == "Darwin" ]; then
+    cd graph_server/static
+    rm -rf preview
+    i5ting_toc -f api.md
+    cd ../..
+fi

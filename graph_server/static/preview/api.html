@@ -1,0 +1,243 @@
+<html>
+  <head>
+	  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <title>图谱:api</title>
+		<link href="toc/style/github-bf51422f4bb36427d391e4b75a1daa083c2d840e.css" media="all" rel="stylesheet" type="text/css"/>
+		<link href="toc/style/github2-d731afd4f624c99a4b19ad69f3083cd6d02b81d5.css" media="all" rel="stylesheet" type="text/css"/>
+		<link href="toc/css/zTreeStyle/zTreeStyle.css" media="all" rel="stylesheet" type="text/css"/>
+	  <style>
+		pre {
+		    counter-reset: line-numbering;
+		    border: solid 1px #d9d9d9;
+		    border-radius: 0;
+		    background: #fff;
+		    padding: 0;
+		    line-height: 23px;
+		    margin-bottom: 30px;
+		    white-space: pre;
+		    overflow-x: auto;
+		    word-break: inherit;
+		    word-wrap: inherit;
+		}
+
+		pre a::before {
+		  content: counter(line-numbering);
+		  counter-increment: line-numbering;
+		  padding-right: 1em; /* space after numbers */
+		  width: 25px;
+		  text-align: right;
+		  opacity: 0.7;
+		  display: inline-block;
+		  color: #aaa;
+		  background: #eee;
+		  margin-right: 16px;
+		  padding: 2px 10px;
+		  font-size: 13px;
+		  -webkit-touch-callout: none;
+		  -webkit-user-select: none;
+		  -khtml-user-select: none;
+		  -moz-user-select: none;
+		  -ms-user-select: none;
+		  user-select: none;
+		}
+
+		pre a:first-of-type::before {
+		  padding-top: 10px;
+		}
+
+		pre a:last-of-type::before {
+		  padding-bottom: 10px;
+		}
+
+		pre a:only-of-type::before {
+		  padding: 10px;
+		}
+
+		.highlight { background-color: #ffffcc } /* RIGHT */
+		</style>
+  </head>
+  <body>
+	  <div>
+				<div style='width:25%;'>
+						<ul id="tree" class="ztree" style='width:100%'>
+
+						</ul>
+				</div>
+        <div id='readme' style='width:70%;margin-left:20%;'>
+          	<article class='markdown-body'>
+            	<p>图谱布局计算接口</p>
+<p>联系人：张瑞  </p>
+<h3 id="webassembly-js-">WebAssembly js调用接口</h3>
+<p>引入graph.js  </p>
+<pre><code>
+Module.onRuntimeInitialized = function() {  
+
+    var inputStr = JSON.stringify(jsObj);//js对象转字符串
+    var inputPtr = allocateUTF8(inputStr);//字符串转指针
+    var outputPtr = Module._sort(inputPtr);//sort排序
+    var outputStr = UTF8ToString(outputPtr);//排序结果指针转字符串
+    _free(inputStr);//释放申请的指针
+    jsObj = JSON.parse(outputStr);
+
+}  
+
+</code></pre><p>1、提交的json如下，<code>url字段必须填写</code>   <a href="#request_params">请求字段详细</a>  </p>
+<pre><code class="lang-json">{
+    &quot;url&quot;:&quot;http://api.sophon.com/graph/show/10165&quot;,
+    &quot;isCreateForestFun&quot;:true,    
+    &quot;isSortDegree&quot;:true,         
+    &quot;isLayoutHierarchy&quot;:true,    
+    &quot;isYifanhu&quot;:true,            
+    &quot;taskNum&quot;:50000,             
+    &quot;optimalDistance&quot;:100,       
+    &quot;yifanhu_3d&quot;:true,           
+    &quot;maxIterations&quot;:100
+}
+</code></pre>
+<p>2、<a href="#reponse_params">返回的json格式字段详细</a>   </p>
+<h3 id="-url-">提供一个请求url，返回布局完成的图谱</h3>
+<p>接口地址 : /api/sort<br>请求方式 ：post    </p>
+<p>1、提交的json如下，<code>url字段必须填写</code>   <a href="#request_params">请求字段详细</a>  </p>
+<pre><code class="lang-json">{
+    &quot;url&quot;:&quot;http://api.sophon.com/graph/show/10165&quot;,
+    &quot;isCreateForestFun&quot;:true,    
+    &quot;isSortDegree&quot;:true,         
+    &quot;isLayoutHierarchy&quot;:true,    
+    &quot;isYifanhu&quot;:true,            
+    &quot;taskNum&quot;:50000,             
+    &quot;optimalDistance&quot;:100,       
+    &quot;yifanhu_3d&quot;:true,           
+    &quot;maxIterations&quot;:100
+}
+</code></pre>
+<p>2、<a href="#reponse_params">返回的json格式字段详细</a>   </p>
+<h3 id="-">提供一个图谱，返回计算好的图谱</h3>
+<p>接口地址 : /api/sort2
+请求方式 ：post    </p>
+<p>1、提交的json如下：  <a href="#request_params">请求字段详细</a>     </p>
+<pre><code class="lang-json">{
+    &quot;isCreateForestFun&quot;:true,    
+    &quot;isSortDegree&quot;:true,         
+    &quot;isLayoutHierarchy&quot;:true,    
+    &quot;isYifanhu&quot;:true,            
+    &quot;taskNum&quot;:50000,             
+    &quot;optimalDistance&quot;:100,       
+    &quot;yifanhu_3d&quot;:true,           
+    &quot;maxIterations&quot;:100,         
+    &quot;nodes&quot;: [
+        {
+            &quot;id&quot;:&quot;0&quot;,                
+            &quot;x&quot;:55.55,               
+            &quot;y&quot;:66.66                    
+        },
+        {
+            &quot;id&quot;:&quot;1&quot;,                
+            &quot;x&quot;:55.55,               
+            &quot;y&quot;:66.66                     
+        }
+    ],
+    &quot;edges&quot;:[
+        {
+            &quot;id&quot;:&quot;0&quot;,               
+            &quot;source&quot;:&quot;0&quot;,
+            &quot;target&quot;:&quot;1&quot;
+        },
+        {
+            &quot;id&quot;:&quot;1&quot;,                
+            &quot;source&quot;:&quot;1&quot;,
+            &quot;target&quot;:&quot;0&quot;
+        }
+    ]
+}
+
+</code></pre>
+<p>2、<a href="#reponse_params">返回的json格式字段详细</a>   </p>
+ <div id="request_params"></div>   
+
+<h3 id="-">请求参数详细</h3>
+<pre><code>url;//请求服务器地址
+isCreateForestFun = true;//是否先创建森林
+isSortDegree = false;//按度排序
+isLayoutHierarchy = false;//先分层
+
+isYifanhu = true;//是否使用yifanhu计算
+//yifanhu参数
+yifanhu_3d = false;//是否计算yifanhu 3d
+stepRatio = 0.95;//步长更新率的倒数
+relativeStrength = 0.2;//斥力相对于引力的比例系数
+repulsionRatioWithCluster = 1;//力的放大系数
+optimalDistance = 100;//布局中距离的优化目标
+layoutBalanced = true;//未使用
+initialStep = 0;//初始步长是optimalDistance/5
+quadTreeMaxLevel = 8;//四叉树最大深度
+barnesHutTheta = 1.2;//BarnesHut算法搜寻重心和计算的阈值
+convergenceThreshold = 1e-4;//能量小于多少 通知算法收敛
+maxIterations = 50;//最大迭代次数
+spaceSize = 50;//最大迭代次数
+taskNum = 5000;//多线程计算时,多少个边或者节点放进一个线程计算
+
+
+clusterAllLeaves = true;//是否使用多簇
+//簇布局参数
+layoutStarThreshold = 0;//少于这么多，使用星形布局
+layoutStarRadius = 100;//星形布局半径
+radiusStep = 50;//簇布局偏移角度
+nodeOccupiedSpace = 2 * Math.PI * radiusStep * 2 / 15;//所有节点所占空间
+firstLevelMinAngleSpacing = Math.PI / 180 * 10;//
+angleWellDistributed = true;//决定放射边之间的相对位置
+radiusWellDistributed = true;//决定半径序列
+angleAdjustmentRatio = 0.4;//
+angleSpacingRatio = 0.5;//
+</code></pre><div id="reponse_params"></div>  
+
+<h3 id="-">返回参数详细</h3>
+<pre><code class="lang-json">{
+    &quot;nodes&quot;: [
+        {
+            &quot;id&quot;:&quot;0&quot;,                
+            &quot;x&quot;:55.55,               
+            &quot;y&quot;:66.66                   
+        },
+        {
+            &quot;id&quot;:&quot;1&quot;,                
+            &quot;x&quot;:55.55,               
+            &quot;y&quot;:66.66                    
+        }
+    ],
+    &quot;edges&quot;:[
+        {
+            &quot;id&quot;:&quot;0&quot;,               
+            &quot;source&quot;:&quot;0&quot;,
+            &quot;target&quot;:&quot;1&quot;
+        },
+        {
+            &quot;id&quot;:&quot;1&quot;,                
+            &quot;source&quot;:&quot;1&quot;,
+            &quot;target&quot;:&quot;0&quot;
+        }
+    ]
+}
+
+</code></pre>
+
+          	</article>
+        </div>
+		</div>
+  </body>
+</html>
+<script type="text/javascript" src="toc/js/jquery-1.4.4.min.js"></script>
+<script type="text/javascript" src="toc/js/jquery.ztree.all-3.5.min.js"></script>
+<script type="text/javascript" src="toc/js/ztree_toc.js"></script>
+<script type="text/javascript" src="toc_conf.js"></script>
+
+<SCRIPT type="text/javascript" >
+<!--
+$(document).ready(function(){
+    var css_conf = eval(markdown_panel_style);
+    $('#readme').css(css_conf)
+    
+    var conf = eval(jquery_ztree_toc_opts);
+		$('#tree').ztree_toc(conf);
+});
+//-->
+</SCRIPT>

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="http://258i.com/docs/markdown_res/bootstrap/css/bootstrap.min.css" media="all" />
+    <link rel="stylesheet" type="text/css" href="http://258i.com/docs/markdown_res/bootstrap/css/bootstrap-theme.min.css" media="all" />
+    <link rel="stylesheet" type="text/css" href="http://258i.com/docs/markdown_res/css/github-markdown.css" media="all" />
+    <script type="text/javascript" src="http://258i.com/docs/markdown_res/js/jquery-1.9.1.min.js"></script>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body class="markdown-body" style="height:100%;overflow:scroll;">
+    <style type="text/css" style="height:100%;overflow:scroll;">
+    @import "http://258i.com/static/bower_components/snippets/css/mp/style.css";
+
+
+    .test-graph div {
+        float: left;
+        height: 60%;
+        width: 30%;
+        border: 1px dotted #666;
+        overflow: scroll;
+    }
+    </style>
+    <script src="https://cdn.jsdelivr.net/pako/1.0.3/pako.min.js"></script>
+    <script src="http://258i.com/static/bower_components/snippets/js/mp/fly.js"></script>
+    <script src="http://258i.com/static/build/sigma/sigma.min.js"></script>
+    <script src="http://258i.com/static/build/sigma/plugins/sigma.plugins.animate.min.js"></script>
+    <script src="./js/graph-layout/utils.js"></script>
+    <script src="./js/graph-layout/Grid/grid.js"></script>
+    <script src="./js/graph-layout/quadTree/bhQuadTree.js"></script>
+    <script src="./js/graph-layout/sigma-utils.js"></script>
+    <script src="./js/graph-layout/sigma-graph.js"></script>
+    <script src="./js/graph-layout/sigma-prototype.js"></script>
+    <script src="./js/graph-data/all.js"></script>
+    <script src="./js/graph.js"></script>
+    <script src="./js/asm/asm.js"></script>
+    <script src="./js/echarts/echarts.min.js"></script>
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({ extensions: ["tex2jax.js"], TeX: { extensions: ["AMSmath.js", "AMSsymbols.js"]}, jax: ["input/TeX","output/HTML-CSS"], tex2jax: {inlineMath: [["$","$"],["\\(","\\)"]]} });
+</script>
+    <script src="http://258i.com/static/bower_components/MathJax/MathJax.js">
+    </script>
+    <div class="test-panel" style="padding-left:10px;">
+        <p><input type="checkbox" id="js" />js</p>
+        <p><input type="checkbox" id="asm" />asm</p>
+        <p><input type="checkbox" id="webassembly" checked="true" />webassembly</p>
+        <p><input type="checkbox" id="webassembly1" />webassembly1</p>
+        <p><input type="checkbox" id="webassembly2" />webassembly2</p>
+        <p><input type="checkbox" id="server" />server</p>
+        <p><input type="checkbox" id="server1" />server1</p>
+        <p><input type="checkbox" id="server2" />server2</p>
+        <input id="graphNum" type="text" />
+        <button type="button" onclick="runSort(0)">TEST</button>
+        <button type="button" onclick="runSort(1)">TEST & DRAW</button>
+        <button type="button" onclick="runSort(2)">AUTO TEST</button>
+        <button type="button" onclick="runSort(3)">MEMORY TEST</button>
+        <div id="text_view" style="white-space: pre;" />
+    </div>
+    <div id="test_200_graph" class="test-graph" style="border:0px;">
+        <div class="test-graph-js"></div>
+        <div class="test-graph-asm"></div>
+        <div class="test-graph-webassembly"></div>
+        <div class="test-graph-webassembly-thread1"></div>
+        <div class="test-graph-webassembly-thread2"></div>
+        <div class="test-graph-server"></div>
+        <div class="test-graph-server-thread1"></div>
+        <div class="test-graph-server-thread2"></div>
+    </div>
+    <div id="box" style="width:600px;height:400px;"></div>
+</body>
+
+</html>
+<script type="text/javascript">
+function sort(out, OutCallback, g0 = null) {
+    var containerId = 'test_200_graph';
+    var s = fly.createShow('#' + containerId);
+
+    if (g0 == null) {
+        var g0 = getRandomGraph(out.num, out.num, [3, 6]);
+    }
+
+    g0.nodes.forEach(function(node) {
+        if (Math.random() == 0.1) {
+            node.fixed = 1;
+            node.color = '#000';
+        }
+    });
+
+
+    g0.nodes.forEach(function(node) {
+        if (Math.random() == 0.5) {
+            node.color = node.oldColor || node.color;
+            delete node.oldColor;
+            delete node.selected;
+            if (Math.random() > 0.5) {
+                node.selected = 1;
+                node.oldColor = node.color;
+                node.color = '#1f77b4';
+            }
+        }
+    });
+
+
+    var sigmaSettings = {
+        sideMargin: 0.1,
+        enableEdgeHovering: true,
+        edgeHoverPrecision: 5,
+        autoRescale: 0
+    };
+
+    var rendererSettings = {
+        doubleClickEnabled: true,
+        mouseWheelEnabled: false,
+        minEdgeSize: 0.5,
+        maxEdgeSize: 1,
+        minNodeSize: 1,
+        maxNodeSize: 5,
+        edgeHoverColor: fly.randomColor(),
+        edgeHoverSizeRatio: 1,
+        edgeHoverExtremities: true
+    };
+
+
+
+    function displayGraph(layout_str, graphData, resolve) {
+        if (out.draw) {
+
+            var layout = isSigmaInstanceExisted(layout_str);
+            if (layout) {
+                layout.kill();
+            }
+            layout = getUniqueSigmaInstance(
+                layout_str, {
+                    settings: sigmaSettings,
+                    graph: graphData,
+                    renderers: [{
+                        type: 'canvas',
+                        container: $('#' + containerId + ' .' + layout_str)[0],
+                        settings: rendererSettings
+                    }]
+                });
+
+            layout
+                .normalizeSophonNodes()
+                .alignCenter({
+                    wholeView: 1,
+                    readPrefix: 'yfh_',
+                    writePrefix: 'yfh_'
+                })
+                .refresh();
+
+            layout
+                .prepareAnimation({
+                    readPrefix: 'yfh_'
+                });
+
+            setTimeout(function() {
+                sigma.plugins.animate(
+                    layout, {
+                        x: 'yfh_x',
+                        y: 'yfh_y'
+                    }, {
+                        duration: 200,
+                        onComplete: function() {
+                            resolve('');
+                        }
+                    }
+                );
+            }, 100);
+        } else {
+            delete graphData;
+            resolve('');
+        }
+    }
+
+    function layout_js(isNeedRun) {
+        var p = new Promise(function(resolve, reject) {
+            if (!isNeedRun) {
+                out.cost[0] = 0;
+                resolve('');
+            } else {
+                print("layout_js start", out);
+                var startTime = performance.now();
+                sigma.utils.layoutYifanHu(g0.nodes, g0.edges, {
+                    optimalDistance: 100,
+                    readPrefix: 'yfh_',
+                    useBarnesHut: 1,
+                    maxIterations: 50,
+                    relativeStrength: 0.2,
+                    repulsionRatioWithCluster: 1,
+                    layoutBalanced: 1
+                });
+                out.cost[0] = Math.round(parseInt(performance.now() - startTime));
+                print("layout_js finish", out);
+                displayGraph('test-graph-js', g0, resolve);
+            }
+        });
+        return p;
+    }
+
+
+    function layout_webassembly(graphData, module_type, layoutStr, index, isNeedRun) {
+        var p = new Promise(function(resolve, reject) {
+            if (!isNeedRun) {
+                out.cost[index] = 0;
+                resolve('');
+            } else {
+                print(layoutStr + " start", out);
+                // 做一些异步操作
+                // console.log("webassembly sort start");
+                var startTime = performance.now();
+                var inputStr = JSON.stringify(graphData); //js对象转字符串
+                var inputPtr = module_type.allocateUTF8(inputStr); //字符串转指针
+                var outputPtr = module_type._sort(inputPtr); //sort排序
+                var outputStr = module_type.UTF8ToString(outputPtr); //排序结果指针转字符串
+                var backData = JSON.parse(outputStr);
+                module_type._free(inputPtr); //释放申请的指针
+
+                out.cost[index] = Math.round(parseInt(performance.now() - startTime));
+                print(layoutStr + " finish", out);
+                displayGraph(layoutStr, backData, resolve);
+            }
+
+        });
+        return p;
+    }
+
+    function layout_server(graphData, layoutStr, index, isNeedRun) {
+        var p = new Promise(function(resolve, reject) {
+            if (!isNeedRun) {
+                out.cost[index] = 0;
+                resolve('');
+            } else {
+                print(layoutStr + " start", out);
+                //console.log("c server sort start");
+                var startTime = performance.now();
+                var bodyStr = JSON.stringify(graphData);
+                if (bodyStr && bodyStr.length > 1000) {
+                    bodyStr = pako.deflate(bodyStr);
+                }
+                fetch(url, {
+                        method: "post",
+                        headers: {
+                            "Content-type": "application/json",
+                            "sophon-request-id": "123",
+                            "sophon-auth-token": "123"
+                        },
+                        body: bodyStr
+                    })
+                    .then(function(response) {
+                        if (response.status == 200) {
+                            return response;
+                        }
+                    })
+                    .then(function(data) {
+                        return data.text();
+                    })
+                    .then(function(text) {
+                        var backData = JSON.parse(text);
+                        out.cost[index] = Math.round(parseInt(performance.now() - startTime));
+                        print(layoutStr + " finish", out);
+                        displayGraph(layoutStr, backData, resolve);
+
+                    })
+                    .catch(function(err) {
+                        resolve('');
+                    });
+            }
+
+        });
+        return p;
+    }
+
+    var g1 = {};
+    var g2 = {};
+    var g3 = {};
+    var g4 = {};
+    var g5 = {};
+    var g6 = {};
+    var g7 = {};
+
+    if (out.opt.asm_run) {
+        g1 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+
+    if (out.opt.webassembly_run) {
+        g2 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+
+    if (out.opt.webassembly_run1) {
+        g3 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+
+    if (out.opt.webassembly_run2) {
+        g4 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+
+    if (out.opt.server_run) {
+        var g5 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+
+    if (out.opt.server_run1) {
+        var g6 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+    if (out.opt.server_run2) {
+        var g7 = {
+            nodes: g0.nodes.slice(),
+            edges: g0.edges.slice()
+        };
+    }
+
+    g1.threadPollType = 0; //asm单线程
+    g2.threadPollType = 0; //webassembly单线程
+    g3.threadPollType = 1; //webassembly_async多线程
+    g4.threadPollType = 2; //webassembly_async多线程
+    g5.threadPollType = 0; //服务器单线程
+    g6.threadPollType = 1; //服务器多线程
+    g7.threadPollType = 2; //服务器多线程
+
+    var g1_layout = 'test-graph-asm';
+    var g2_layout = 'test-graph-webassembly';
+    var g3_layout = 'test-graph-webassembly-thread1';
+    var g4_layout = 'test-graph-webassembly-thread2';
+    var g5_layout = 'test-graph-server';
+    var g6_layout = 'test-graph-server-thread1';
+    var g7_layout = 'test-graph-server-thread2';
+
+
+    layout_js(out.opt.runjs && (out.num <= jsMaxOperateNum))
+        .then(function(data) {
+            return layout_webassembly(g1, ModuleASM_INSTANCE, g1_layout, 1, out.opt.asm_run);
+        })
+        .then(function(data) {
+            return layout_webassembly(g2, ModuleWASM_INSTANCE, g2_layout, 2, out.opt.webassembly_run);
+        })
+        .then(function(data) {
+            return layout_webassembly(g3, ModuleWASM_INSTANCE, g3_layout, 3, out.opt.webassembly_run1);
+        })
+        .then(function(data) {
+            return layout_webassembly(g4, ModuleWASM_INSTANCE, g4_layout, 4, out.opt.webassembly_run2);
+        })
+        .then(function(data) {
+            return layout_server(g5, g5_layout, 5, out.opt.server_run);
+        })
+        .then(function(data) {
+            return layout_server(g6, g6_layout, 6, out.opt.server_run1);
+        })
+        .then(function(data) {
+            return layout_server(g7, g7_layout, 7, out.opt.server_run2);
+        })
+        .then(function(data) {
+            OutCallback(null);
+        });
+}
+
+
+
+function print(message, params) {
+    if (params.draw) {
+        console.log(message);
+    }
+}
+
+function createParams(nodeNum, isDraw, runOption) {
+    var costArr = [];
+    for (var i = 0; i < 8; i++) {
+        costArr.push(0);
+
+    }
+    return result = {
+        num: nodeNum,
+        cost: costArr,
+        draw: isDraw,
+        opt: runOption
+    };
+}
+
+
+function formatTime(timeIn) {
+    if (timeIn < 100) {
+        timeIn = timeIn + '毫秒';
+    } else {
+        timeIn = (timeIn / 1000).toFixed(2) + '秒';
+    }
+    return timeIn;
+}
+
+function createRaw(result) {
+    return {
+        'js': formatTime(result.cost[0]),
+        'asm': formatTime(result.cost[1]),
+        'webassembly单线程': formatTime(result.cost[2]),
+        'webassembly多线程1': formatTime(result.cost[3]),
+        'webassembly多线程2': formatTime(result.cost[4]),
+        '服务器单线程': formatTime(result.cost[5]),
+        '服务器多线程1': formatTime(result.cost[6]),
+        '服务器多线程2': formatTime(result.cost[7])
+    };
+}
+
+function createTableCol(resultFinalList) {
+    var table = {};
+    var size = resultFinalList.length;
+    for (var i = 0; i < size; i++) {
+        var result = resultFinalList[i];
+        var col = createRaw(result);
+        var key = '节点数:' + result.num;
+        table[key] = col;
+    }
+    return table;
+}
+
+//外部循环
+function runOut(runOpt, pnum, resultFinalList, outcallback) {
+    var resultList = [];
+    runInner(runOpt, pnum, resultList, function() {
+        var size = resultList.length;
+        var result = createParams(size, false, runOpt);
+        for (var i = 0; i < size; i++) {
+            var now = resultList[i];
+            for (var j = 0; j < result.cost.length; j++) {
+                result.cost[j] += now.cost[j];
+            }
+            result.cost[i] = result.cost[i] / size;
+        }
+        result.num = pnum;
+        resultFinalList.push(result);
+        console.clear();
+        console.table(createTableCol(resultFinalList));
+        if (pnum == height) {
+            outcallback();
+        } else {
+            runOut(runOpt, pnum + step, resultFinalList, outcallback);
+        }
+    });
+}
+
+
+
+
+function runInner(runOpt, pnum, resultList, innerCallback) {
+    var result = createParams(pnum, false, runOpt);
+    sort(result, function() {
+        resultList.push(result);
+        var runTimes = resultList.length;
+        if (runTimes < times) {
+            runInner(runOpt, pnum, resultList, innerCallback);
+        } else {
+            innerCallback();
+        }
+    });
+}
+
+
+//draw
+function drawGraph(resultFinalList) {
+    var myChart = echarts.init(document.getElementById("box"));
+
+    var x_list = []; //x轴单位
+    var cost_list = [];
+
+
+    for (var i = 0; i <= resultFinalList.length; i++) {
+        var result = resultFinalList[i];
+        if (typeof(result) != "undefined") {
+            x_list.push(result.num + '节点');
+            console.log(result);
+            for (var j = 0; j <= result.cost.length; j++) {
+                if (typeof(cost_list[j]) == "undefined") {
+                    cost_list[j] = [];
+                }
+                cost_list[j].push(result.cost[j]);
+            }
+        }
+    }
+
+    var option = {
+        backgroundColor: '#FBFBFB',
+        tooltip: {
+            trigger: 'axis'
+        },
+        toolbox: {
+            show: true,
+            feature: {
+                mark: { show: true },
+                dataView: { show: true, readOnly: false },
+                magicType: { show: true, type: ['line', 'bar', 'stack', 'tiled'] },
+                restore: { show: true },
+                saveAsImage: { show: true }
+            }
+        },
+        legend: {
+            data: ['js', 'asm', 'webassembly单线程', 'webassembly多线程1', 'webassembly多线程2', '服务器单线程', '服务器多线程1', '服务器多线程2']
+        },
+
+        calculable: true,
+
+        xAxis: [{
+            type: 'category',
+            // boundaryGap: false,
+            data: x_list
+        }],
+        yAxis: [{
+
+            type: 'value'
+        }],
+        series: [{
+            name: 'js',
+            type: 'line',
+            data: cost_list[0]
+        }, {
+            name: 'asm',
+            type: 'line',
+            data: cost_list[1]
+        }, {
+            name: 'webassembly单线程',
+            type: 'line',
+            data: cost_list[2]
+        }, {
+            name: 'webassembly多线程1',
+            type: 'line',
+            data: cost_list[3]
+        }, {
+            name: 'webassembly多线程2',
+            type: 'line',
+            data: cost_list[4]
+        }, {
+            name: '服务器单线程',
+            type: 'line',
+            data: cost_list[5]
+        }, {
+            name: '服务器多线程1',
+            type: 'line',
+            data: cost_list[6]
+        }, {
+            name: '服务器多线程2',
+            type: 'line',
+            data: cost_list[7]
+        }]
+
+    }
+
+
+    myChart.setOption(option);
+
+}
+
+
+function normal_sort(result, g0, index) {
+    sort(result, function() {
+        var resultFinalList = [];
+        var resultList = [];
+        resultList.push(result);
+        resultFinalList.push(result);
+        //             console.clear();
+        console.table(createTableCol(resultFinalList));
+        if (index < times) {
+            normal_sort(result,g0,index + 1)
+        }
+    }, g0);
+}
+
+//    var url = document.location.toString();
+//    if (url.search("localhost") != -1) {
+//        url = 'http://172.22.5.13:8000/api/sort2';
+//    } else {
+//        url = '/api/sort2';
+//    }
+var url = '/api/sort2';
+
+var jsMaxOperateNum = 10000;
+
+var low = 50000; //最小
+var height = 50000; //最大
+var step = 1000; //步进
+var size = (height - low) / step; //一共多少种
+
+//内部循环
+var times = 1000; //每种测多少次
+var isWASMReadyRun = false;
+var isASMReadyRun = false;
+
+//var isRun = 0;
+function runSort(isTest) {
+
+    if (!isWASMReadyRun || !isASMReadyRun) {
+        console.log("webassembly bridge is not ready");
+    }
+    //    isRun = 1;
+    var nodeNum = $("#graphNum").val();
+    console.log("run:" + isTest + ":" + nodeNum);
+
+    var runOpt = {};
+    runOpt.runjs = $("#js:checked").val();
+    runOpt.asm_run = $("#asm:checked").val();
+    runOpt.webassembly_run = $("#webassembly:checked").val();
+    runOpt.webassembly_run1 = $("#webassembly1:checked").val();
+    runOpt.webassembly_run2 = $("#webassembly2:checked").val();
+    runOpt.server_run = $("#server:checked").val();
+    runOpt.server_run1 = $("#server1:checked").val();
+    runOpt.server_run2 = $("#server2:checked").val();
+
+    if (isTest == 2) {
+        var resultFinalList = []; //存放测试结果
+        runOut(runOpt, low, resultFinalList, function() {
+            drawGraph(resultFinalList);
+        });
+    } else if (isTest == 3) {
+
+        var draw = (isTest == 1) ? true : false;
+        var re = /^[0-9]+.?[0-9]*$/;
+        if (re.test(nodeNum)) {
+            console.log("memory run!");
+            var g0 = getRandomGraph(nodeNum, nodeNum, [3, 6]);
+            var result = createParams(nodeNum, false, runOpt);
+            normal_sort(result, g0, 0);
+        } else {
+            console.log("解析失败");
+        }
+
+    } else {
+        var draw = (isTest == 1) ? true : false;
+        var re = /^[0-9]+.?[0-9]*$/;
+        if (re.test(nodeNum)) {
+
+            var result = createParams(nodeNum, draw, runOpt);
+            sort(result, function() {
+                var resultFinalList = [];
+                var resultList = [];
+                resultList.push(result);
+                resultFinalList.push(result);
+                //             console.clear();
+                console.table(createTableCol(resultFinalList));
+            });
+        } else {
+            console.log("解析失败");
+        }
+    }
+}
+
+$("#graphNum").val(100);
+let ModuleWASM_INSTANCE;
+try {
+    isWASMReadyRun = false;
+    ModuleWASM_INSTANCE = Module();
+    ModuleWASM_INSTANCE.onRuntimeInitialized = function() {
+        isWASMReadyRun = true;
+        console.log("ModuleWASM_INSTANCE init finish");
+    }
+} catch (err) {
+    isWASMReadyRun = false;
+    ModuleWASM_INSTANCE = Module;
+    ModuleWASM_INSTANCE.onRuntimeInitialized = function() {
+        isWASMReadyRun = true;
+        console.log("ModuleWASM_INSTANCE init finish");
+    }
+}
+
+
+
+const ModuleASM_INSTANCE = ModuleASM();
+//console.log(ModuleASM_INSTANCE);
+ModuleASM_INSTANCE.onRuntimeInitialized = function() {
+    isASMReadyRun = true;
+    console.log("ModuleASM_INSTANCE init finish");
+}
+</script>
